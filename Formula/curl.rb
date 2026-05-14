@@ -13,6 +13,16 @@ class Curl < Formula
     regex(/href=.*?curl[._-]v?(.*?)\.t/i)
   end
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 cellar: :any,                 arm64_tahoe:   "60ceab72368d9d2a1ded2ef018223f367af01b17820c7bf73391a72aa38ec5fe"
+    sha256 cellar: :any,                 arm64_sequoia: "2882dde933f69a30d97e50b7cd2ade1a6eb27669ee213f0ea340f4fb30c051de"
+    sha256 cellar: :any,                 tahoe:         "2fd4910134eda104040f91d90896baf4503a52f415fb7aa4777ca9597bdb46cb"
+    sha256 cellar: :any,                 sequoia:       "ff275b6f753b3878dd79252c4fdfc6d6b840c10c6b774667cd1c25a8d79aa038"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "4ba0627df5aa8eec51627fa00e6768d87278862bf3364d1ea528cbf03a431691"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "d718cb1dbc302efe7958b1d5a0fb7b6d1caabdd257cd2570e8a19acb860e9d7a"
+  end
+
   head do
     url "https://github.com/curl/curl.git", branch: "master"
 
