@@ -86,7 +86,7 @@ jobs:
         run: brew test-bot --only-setup
 
       - name: Install FUSE-T
-        if: ${{ runner.os == 'macOS' }}
+        if: ${{ contains(github.head_ref, 'rclone') && runner.os == 'macOS' }}
         run: |
           brew tap otsge/casks
           brew install --cask otsge/casks/fuse-t
