@@ -5,6 +5,16 @@ class Aria2 < Formula
   sha256 "60a420ad7085eb616cb6e2bdf0a7206d68ff3d37fb5a956dc44242eb2f79b66b"
   license "GPL-2.0-or-later"
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 cellar: :any,                 arm64_tahoe:   "aef31ea8baaf493aa79e76dc18f51f7588bb19ed17effdf61ac5762cb68efc04"
+    sha256 cellar: :any,                 arm64_sequoia: "a377443877abd3f65ebec71dbf3330b2e5b04ed93e982c12e5f8dd29aeaad082"
+    sha256 cellar: :any,                 tahoe:         "59dbd3d75aa52a7c9b3e60f4595403093ade7f893e9fedca3699ed0a0fd75514"
+    sha256 cellar: :any,                 sequoia:       "5bed30847fec64601fdb28d697d3bcd894de6b9e06eabd91a3f1950dff3391a4"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "9bc5ae173a5737ecdc467f115de005509634114e64cd7496a6201dad1ce131cd"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "6d873d091d7cf54d5ceab19bdccaa8660866e0e7280266f52644f061cddbd47f"
+  end
+
   head do
     url "https://github.com/aria2/aria2.git", branch: "master"
 
