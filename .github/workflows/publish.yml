@@ -1,4 +1,4 @@
-name: brew pr-pull
+name: Publish and commit bottles
 
 on:
   pull_request_target:
