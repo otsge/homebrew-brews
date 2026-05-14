@@ -12,6 +12,16 @@ class CurlQuiche < Formula
     regex(/href=.*?curl[._-]v?(.*?)\.t/i)
   end
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 cellar: :any,                 arm64_tahoe:   "e5abad8e208c55f1f5f1bc25f53c7c5a1ce50cc66d8560b2ce08efdde2ea030f"
+    sha256 cellar: :any,                 arm64_sequoia: "4a4fe24acf3c52981e37bccb89e0d88639d42dfbafe77cbeee581927d05b160e"
+    sha256 cellar: :any,                 tahoe:         "1bd351e6c1a28f034dfc6d8943ed19c2b9314b396d40d92b736290a02be98441"
+    sha256 cellar: :any,                 sequoia:       "96ca9cc8fdc7429d391856cf2a1fbc47707ee804eea306e90db492bc28458548"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "14da61310fd162dfd3939b8725c4b1d65d9b33f8c38828af792b267e52c8ca62"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "c39030bbf131847ab487fd325c3a4fd9724c53eb99d0b1b79c6b94124ca9baab"
+  end
+
   head do
     url "https://github.com/curl/curl.git", branch: "master"
 
