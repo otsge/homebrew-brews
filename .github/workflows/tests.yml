@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Formula/**.rb'
+  pull_request:
+    paths:
+      - 'Formula/**.rb'
+
+env:
+  HOMEBREW_DEVELOPER: 1
+  HOMEBREW_NO_ANALYTICS: 1
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
+
+concurrency:
+  group: "tests-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  check-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+
+      - run: brew test-bot --only-tap-syntax
+  test-bot:
+    needs: check-syntax
+    strategy:
+      matrix:
+        os: [ macos-15, macos-15-intel, macos-26, macos-26-intel ]
+        include:
+          - os: ubuntu-latest
+            container: ghcr.io/homebrew/brew:main
+          - os: ubuntu-22.04-arm
+            container: ghcr.io/homebrew/brew:main
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      packages: read
+      pull-requests: read
+    steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+        with:
+          cask: false
+          core: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup runner
+        run: brew test-bot --only-cleanup-before
+
+      - name: Get cache key
+        id: cache-key
+        run: |
+          cache_key_prefix="${{ runner.os }}"
+          if [ "${{ runner.os }}" == "macOS" ]
+          then
+            macos_version="$(sw_vers -productVersion)"
+            cache_key_prefix="${macos_version%%.*}-$(uname -m)"
+          elif [ "${{ runner.os }}" == "Linux" ]
+          then
+            cache_key_prefix="linux-$(uname -m)"
+          fi
+          echo "prefix=${cache_key_prefix}" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache Homebrew Bundler RubyGems
+        uses: actions/cache@main
+        with:
+          path: ${{ steps.set-up-homebrew.outputs.gems-path }}
+          key: ${{ steps.cache-key.outputs.prefix }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
+          restore-keys: ${{ steps.cache-key.outputs.prefix }}-rubygems-
+
+      - name: Setup Homebrew test environment
+        run: brew test-bot --only-setup
+
+      - name: Install FUSE-T
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew tap otsge/casks
+          brew install --cask otsge/casks/fuse-t
+
+      - name: Base64-encode GITHUB_TOKEN for HOMEBREW_DOCKER_REGISTRY_TOKEN
+        id: base64-encode
+        if: github.event_name == 'pull_request'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          base64_token=$(echo -n "${TOKEN}" | base64 | tr -d "\n")
+          echo "::add-mask::${base64_token}"
+          echo "token=${base64_token}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build bottle
+        id: build-bottle
+        if: github.event_name == 'pull_request'
+        env:
+          HOMEBREW_DOCKER_REGISTRY_TOKEN: ${{ steps.base64-encode.outputs.token }}
+        run:  |
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_INSTALL_FROM_API=1
+          if [[ "${{ runner.os }}" == "Linux" ]]
+          then
+            LC_ALL=C LANG=C sed -i 's!uses_from_macos "curl"!# uses_from_macos "curl"!g' "$(brew --taps)"/homebrew/homebrew-core/Formula/r/rust.rb
+          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]
+          then
+            cp /Users/runner/work/homebrew-brews/homebrew-brews/.github/workflows/files/tb_formulae "$(brew --prefix)/Homebrew/Library/Homebrew/test_bot/formulae.rb"
+          fi
+          brew test-bot --only-formulae --root-url=https://ghcr.io/v2/otsge/brews
+
+      - name: Upload bottles as artifact
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@main
+        with:
+          name: bottles_${{ steps.cache-key.outputs.prefix }}
+          path: '*.bottle.*'
+  label-pr:
+    needs: test-bot
+    if: ${{ startsWith(github.head_ref, 'bump') && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+    - id: label-the-PR
+      env:
+        GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
