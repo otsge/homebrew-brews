@@ -1,11 +1,11 @@
 name: CI
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'Formula/**.rb'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Formula/**.rb'
   pull_request:
     paths:
       - 'Formula/**.rb'
@@ -23,16 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-syntax:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-
-      - run: brew test-bot --only-tap-syntax
   test-bot:
-    needs: check-syntax
     strategy:
       matrix:
         os: [ macos-15, macos-15-intel, macos-26, macos-26-intel ]
@@ -85,8 +76,9 @@ jobs:
       - name: Setup Homebrew test environment
         run: brew test-bot --only-setup
 
+      - run: brew test-bot --only-tap-syntax
       - name: Install FUSE-T
-        if: ${{ contains(github.head_ref, 'rclone') && runner.os == 'macOS' }}
+        if: ${{ contains(github.head_ref, 'rclone') && github.event_name == 'pull_request' && runner.os == 'macOS' }}
         run: |
           brew tap otsge/casks
           brew install --cask otsge/casks/fuse-t
@@ -106,13 +98,19 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           HOMEBREW_DOCKER_REGISTRY_TOKEN: ${{ steps.base64-encode.outputs.token }}
+          IS_CURL: ${{ case(contains(github.head_ref, 'curl'), 'TRUE', 'FALSE') }}
         run:  |
           export HOMEBREW_NO_AUTO_UPDATE=1
           export HOMEBREW_NO_INSTALL_FROM_API=1
-          if [[ "${{ runner.os }}" == "Linux" ]]
+          if [[ "${IS_CURL}" == "TRUE" && "${{ runner.os }}" == "macOS" ]]
+          then
+            LC_ALL=C LANG=C sed -i '' 's#depends_on "libssh2"#depends_on "otsge/brews/libssh2"#g' "$(brew --taps)"/homebrew/homebrew-core/Formula/*/*.rb
+          elif [[ "${IS_CURL}" == "TRUE" && "${{ runner.os }}" == "Linux" ]]
           then
             LC_ALL=C LANG=C sed -i 's!uses_from_macos "curl"!# uses_from_macos "curl"!g' "$(brew --taps)"/homebrew/homebrew-core/Formula/r/rust.rb
-          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]
+            LC_ALL=C LANG=C sed -i 's#depends_on "libssh2"#depends_on "otsge/brews/libssh2"#g' "$(brew --taps)"/homebrew/homebrew-core/Formula/*/*.rb
+          fi
+          if [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]
           then
             cp /Users/runner/work/homebrew-brews/homebrew-brews/.github/workflows/files/tb_formulae "$(brew --prefix)/Homebrew/Library/Homebrew/test_bot/formulae.rb"
           fi
