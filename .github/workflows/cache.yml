@@ -33,13 +33,23 @@ jobs:
   cache:
     strategy:
       matrix:
-        os: [ macos-15, macos-15-intel, macos-26, macos-26-intel ]
         include:
+          - os: macos-15
+            name: macOS 15-arm64
+          - os: macos-15-intel
+            name: macOS 15-x86_64
+          - os: macos-26
+            name: macOS 26-arm64
+          - os: macos-26-intel
+            name: macOS 26-x86_64
           - os: ubuntu-latest
+            name: Linux x86_64
             container: ghcr.io/homebrew/brew:main
           - os: ubuntu-22.04-arm
+            name: Linux arm64
             container: ghcr.io/homebrew/brew:main
       fail-fast: false
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
