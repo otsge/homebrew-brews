@@ -20,6 +20,7 @@ env:
   HOMEBREW_DEVELOPER: 1
   HOMEBREW_NO_ANALYTICS: 1
   HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
 
 defaults:
   run:
@@ -34,6 +35,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - os: macos-14
+            name: macos 14-arm64
           - os: macos-15
             name: macOS 15-arm64
           - os: macos-15-intel
@@ -42,7 +45,7 @@ jobs:
             name: macOS 26-arm64
           - os: macos-26-intel
             name: macOS 26-x86_64
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             name: Linux x86_64
             container: ghcr.io/homebrew/brew:main
           - os: ubuntu-22.04-arm
@@ -74,7 +77,7 @@ jobs:
             cache_key_prefix="${macos_version%%.*}-$(uname -m)"
           elif [ "${{ runner.os }}" == "Linux" ]
           then
-            cache_key_prefix="linux-$(uname -m)"
+            cache_key_prefix="Linux-$(uname -m)"
           fi
           echo "prefix=${cache_key_prefix}" >> "${GITHUB_OUTPUT}"
 
