@@ -4,15 +4,27 @@ on:
   push:
     branches:
       - main
+      - master
     paths:
-      - '**.rb'
+      - 'Formula/**'
   pull_request:
     paths:
-      - '**.rb'
+      - 'Formula/**'
+  merge_group:
 
 env:
+  BOTTLES_DIR: ${{ github.workspace }}/bottles
   HOMEBREW_DEVELOPER: 1
+  HOMEBREW_GITHUB_ACTIONS: 1
+  HOMEBREW_SANDBOX_LINUX: 1
   HOMEBREW_NO_ANALYTICS: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_FROM_API: 1
+  HOMEBREW_NO_BUILD_ERROR_ISSUES: 1
+  HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+  GH_REPO: ${{github.repository}}
+  GH_NO_UPDATE_NOTIFIER: 1
+  GH_PROMPT_DISABLED: 1
 
 defaults:
   run:
@@ -20,15 +32,46 @@ defaults:
 
 concurrency:
   group: "tests-${{ github.ref }}"
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
+  # tap_syntax:
+  #   name: tap_syntax
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast-syntax') }}
+  #   container:
+  #     image: ghcr.io/homebrew/brew:main
+  #   env:
+  #     HOMEBREW_SIMULATE_MACOS_ON_LINUX: 1
+  #   steps:
+  #     - name: Set up Homebrew
+  #       id: set-up-homebrew
+  #       uses: Homebrew/actions/setup-homebrew@main
+  #       with:
+  #         core: false
+  #         cask: false
+  #         stable: false
+
+  #     - name: Cache style cache
+  #       uses: actions/cache@main
+  #       with:
+  #         path: /home/linuxbrew/.cache/Homebrew/style
+  #         key: style-cache-main-${{ github.sha }}
+  #         restore-keys: style-cache-main-
+
+  #     - run: brew test-bot --only-tap-syntax
   test-bot:
+    # needs: tap_syntax
+    if: github.event_name == 'pull_request'
+    continue-on-error: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast-syntax') }}
     strategy:
       matrix:
-        os: [ macos-15, macos-15-intel, macos-26, macos-26-intel ]
+        os: [ macos-14, macos-15, macos-15-intel, macos-26, macos-26-intel ]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             container: ghcr.io/homebrew/brew:main
           - os: ubuntu-22.04-arm
             container: ghcr.io/homebrew/brew:main
@@ -45,43 +88,56 @@ jobs:
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@main
         with:
+          core: false
           cask: false
-          core: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cleanup runner
         run: brew test-bot --only-cleanup-before
 
       - name: Get cache key
-        id: cache-key
+        id: setup-cache
         run: |
-          cache_key_prefix="${{ runner.os }}"
-          if [ "${{ runner.os }}" == "macOS" ]
+          cache_key_prefix="${RUNNER_OS}"
+          if [ "${RUNNER_OS}" == "macOS" ]
           then
-            macos_version="$(sw_vers -productVersion)"
-            cache_key_prefix="${macos_version%%.*}-$(uname -m)"
-          elif [ "${{ runner.os }}" == "Linux" ]
+            macos_full_version="$(sw_vers -productVersion)"
+            macos_version="${macos_full_version%%.*}"
+            arch="$(uname -m)"
+            cache_key_prefix="${macos_version}-${arch}"
+          elif [ "${RUNNER_OS}" == "Linux" ]
           then
-            cache_key_prefix="linux-$(uname -m)"
+            arch="$(uname -m)"
+            cache_key_prefix="Linux-${arch}"
           fi
-          echo "prefix=${cache_key_prefix}" >> "${GITHUB_OUTPUT}"
+          {
+          echo "prefix=${cache_key_prefix}"
+          echo "macos_version=${macos_version:-}"
+          echo "arch=${arch:-}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Cache Homebrew Bundler RubyGems
         uses: actions/cache@main
         with:
           path: ${{ steps.set-up-homebrew.outputs.gems-path }}
-          key: ${{ steps.cache-key.outputs.prefix }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
-          restore-keys: ${{ steps.cache-key.outputs.prefix }}-rubygems-
+          key: ${{ steps.setup-cache.outputs.prefix }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
+          restore-keys: ${{ steps.setup-cache.outputs.prefix }}-rubygems-
 
       - name: Setup Homebrew test environment
-        run: brew test-bot --only-setup
+        run: |
+          printf '\n<details><summary>brew test-bot --only-setup</summary>\n<p>\n\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '```\n' >> "${GITHUB_STEP_SUMMARY}"
+          HOMEBREW_NO_COLOR=1 brew test-bot --only-setup | tee -a "${GITHUB_STEP_SUMMARY}"
+          printf '```\n' >> "${GITHUB_STEP_SUMMARY}"
+          printf '\n</p>\n</details>\n' >> "$GITHUB_STEP_SUMMARY"
 
       - run: brew test-bot --only-tap-syntax
+
       - name: Install FUSE-T
         if: ${{ contains(github.head_ref, 'rclone') && github.event_name == 'pull_request' && runner.os == 'macOS' }}
         run: |
-          brew tap otsge/casks
-          brew install --cask otsge/casks/fuse-t
+          brew tap otsge/cask
+          brew install --cask otsge/cask/fuse-t
 
       - name: Base64-encode GITHUB_TOKEN for HOMEBREW_DOCKER_REGISTRY_TOKEN
         id: base64-encode
@@ -93,9 +149,27 @@ jobs:
           echo "::add-mask::${base64_token}"
           echo "token=${base64_token}" >> "${GITHUB_OUTPUT}"
 
+      - name: Set up bottles directory
+        id: setup-bottles
+        run: |
+          rm -rvf "${BOTTLES_DIR:?}"
+          mkdir "${BOTTLES_DIR:?}"
+
+          if [[ "$RUNNER_OS" = Linux ]]; then
+            bottle_specifier="{ubuntu,linux}"
+          else
+            bottle_specifier="{macos-${MACOS_VERSION},${MACOS_VERSION}-${ARCH}}"
+          fi
+
+          echo "bottle_specifier=$bottle_specifier" >> "$GITHUB_OUTPUT"
+        env:
+          MACOS_VERSION: ${{ steps.setup-cache.outputs.macos_version }}
+          ARCH: ${{ steps.setup-cache.outputs.arch }}
+
       - name: Build bottle
         id: build-bottle
         if: github.event_name == 'pull_request'
+        working-directory: ${{ env.BOTTLES_DIR }}
         env:
           HOMEBREW_DOCKER_REGISTRY_TOKEN: ${{ steps.base64-encode.outputs.token }}
           IS_CURL: ${{ case(contains(github.head_ref, 'curl'), 'TRUE', 'FALSE') }}
@@ -114,21 +188,40 @@ jobs:
           then
             cp /Users/runner/work/homebrew-brews/homebrew-brews/.github/workflows/files/tb_formulae "$(brew --prefix)/Homebrew/Library/Homebrew/test_bot/formulae.rb"
           fi
-          brew test-bot --only-formulae --root-url=https://ghcr.io/v2/otsge/brews
+          pushd "$(brew --repository)"
+          s="$(git status --porcelain)"
+          if [[ -n "$s" ]]
+          then
+            git add . && git commit --amend --no-edit
+          fi
+          popd
+          brew test-bot --only-formulae --skip-online-checks --skip-dependents --root-url=https://ghcr.io/v2/otsge/brews
 
-      - name: Upload bottles as artifact
+      - name: Post-build steps
+        id: upload-bottles
         if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@main
+        uses: Homebrew/actions/post-build@main
         with:
-          name: bottles_${{ steps.cache-key.outputs.prefix }}
-          path: '*.bottle.*'
+          runner: ${{ matrix.os }}
+          bottles-directory: ${{ env.BOTTLES_DIR }}
+          logs-directory: ${{ env.BOTTLES_DIR }}/logs
+
   label-pr:
     needs: test-bot
-    if: ${{ startsWith(github.head_ref, 'bump') && github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-slim
     steps:
-    - id: label-the-PR
-      env:
-        GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
+      - id: input
+        run: |
+          input1='{"ref": ${{ github.ref }}, "inputs": {"run-id": ${{ github.run_id }}}}'
+          echo "input=${input1}" >> "${GITHUB_OUTPUT}"
+      - name: Label the Pull Request
+        id: label-the-pr
+        env:
+          GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_RUN_ID: ${{ steps.input.outputs.input }}
+        run: |
+          # echo '{"ref": "${{ github.ref }}", "inputs": {"run-id": "${{ github.run_id }}"}}'| \
+          gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
+          echo ${{ fromJSON(env.INPUT_RUN_ID) }} | gh workflow run publish.yml --json
