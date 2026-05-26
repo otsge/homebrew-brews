@@ -6,6 +6,16 @@ class Et < Formula
   license "Apache-2.0"
   head "https://github.com/MisterTea/EternalTerminal.git", branch: "master"
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 cellar: :any,                 arm64_tahoe:   "0f8b0fedc76a5de66e14ef0aa6d4f414f920a798e6ee779b4155f20eab048eee"
+    sha256 cellar: :any,                 arm64_sequoia: "183da3bcd61dc7418c398bf44d26179e4eca313792a74a0e05c286bb7336072a"
+    sha256 cellar: :any,                 tahoe:         "6736dd65943820dcd079d3f875a8ebeaf4a2b6f93a74394d15199259fede06e8"
+    sha256 cellar: :any,                 sequoia:       "1863a000fc9489c73a51f56940f0ca9415c49b2dce42189d83e9b6a4d8e47cdb"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "14562b54ec28a3b68b4dda62b3fac116fcd496483753de4d95a201435c4478e7"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "46dc2b17b9c01c5edb91b76692d6cbcd8508eccdd464c518c29355d24e0f9d8e"
+  end
+
   depends_on "cmake" => :build
   depends_on "pkgconf" => :build
 
