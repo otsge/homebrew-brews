@@ -1,7 +1,7 @@
 name: Publish and commit bottles
 
 on:
-  workflow_run:
+  workflow_dispatch:
     inputs:
       run-id:
         description: 'Workflow run-id'
@@ -56,7 +56,7 @@ jobs:
           pattern: bottles_*
           path: ${{ env.BOTTLES_DIR }}
           merge-multiple: true
-          run-id: ${{ inputs.run-id }}
+          run-id: ${{ (github.event_name == 'workflow_dispatch' && inputs.run-id) || '' }}
 
       - name: Configure Git user
         id: git-user-config
