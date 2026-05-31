@@ -83,7 +83,7 @@ jobs:
       - name: Generate build provenance
         uses: actions/attest@main
         env:
-          BOTTLES_DIR: ${{ github.workspace }}/bottlesn
+          BOTTLES_DIR: ${{ github.workspace }}/bottles
         with:
           subject-path: ${{ env.BOTTLES_DIR }}/*.tar.gz
 
