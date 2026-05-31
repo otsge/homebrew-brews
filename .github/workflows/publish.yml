@@ -84,9 +84,11 @@ jobs:
         with:
           subject-path: ${{ env.BOTTLES_DIR }}/*.tar.gz
 
-      # - name: Checkout branch for bottle commit
-      #   working-directory: ${{steps.set-up-homebrew.outputs.repository-path}}
-      #   run: git checkout -b "$BOTTLE_BRANCH" origin/HEAD
+      - name: Checkout branch for bottle commit
+        env:
+          BOTTLE_BRANCH: ${{ inputs.ref || github.event.pull_request.head.ref }}
+        working-directory: ${{steps.set-up-homebrew.outputs.repository-path}}
+        run: git checkout "${BOTTLE_BRANCH}"
 
       - name: Upload bottles to GitHub Packages
         id: upload
@@ -100,7 +102,6 @@ jobs:
           BOTTLE_BRANCH: ${{ inputs.ref || github.event.pull_request.head.ref }}
         working-directory: ${{ env.BOTTLES_DIR }}
         run: |
-          gh pr checkout "$PULL_REQUEST"
           brew pr-upload --verbose --keep-old --committer="$BREWTESTBOT_NAME_EMAIL" --root-url="https://ghcr.io/v2/otsge/brews"
           echo "title=$(git -C "$HOMEBREW_CORE_PATH" log -1 --format='%s' "$BOTTLE_BRANCH")" >> "$GITHUB_OUTPUT"
           echo "head_sha=$(git -C "$HOMEBREW_CORE_PATH" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
