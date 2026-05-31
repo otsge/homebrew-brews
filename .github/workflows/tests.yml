@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
       - 'Formula/**'
-  merge_group:
+  # merge_group:
 
 env:
   BOTTLES_DIR: ${{ github.workspace }}/bottles
@@ -166,7 +166,7 @@ jobs:
           MACOS_VERSION: ${{ steps.setup-cache.outputs.macos_version }}
           ARCH: ${{ steps.setup-cache.outputs.arch }}
 
-      - name: Build bottle
+      - name: Build bottle for ${{ matrix.os }}
         id: build-bottle
         if: github.event_name == 'pull_request'
         working-directory: ${{ env.BOTTLES_DIR }}
@@ -214,9 +214,8 @@ jobs:
       - name: Label the Pull Request
         id: label-the-pr
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          # BRANCH: ${{ github.event.pull_request.head.ref }}
           GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
-          echo '{"ref": "${{ env.BRANCH }}", "run-id": "${{ github.run_id }}", "pr": "${{ github.event.pull_request.number }}"}' | gh workflow run publish.yml --json
+        run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
+        # run: echo '{"ref": "${{ env.BRANCH }}", "run-id": "${{ github.run_id }}", "pr": "${{ github.event.pull_request.number }}"}' | gh workflow run publish.yml -r "${BRANCH}" --json
