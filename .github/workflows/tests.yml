@@ -69,7 +69,8 @@ jobs:
     continue-on-error: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast-syntax') }}
     strategy:
       matrix:
-        os: [ macos-14, macos-15, macos-15-intel, macos-26, macos-26-intel ]
+        # os: [ macos-14, macos-15, macos-15-intel, macos-26, macos-26-intel ]
+        os: [ macos-15, macos-15-intel, macos-26 ]
         include:
           - os: ubuntu-22.04
             container: ghcr.io/homebrew/brew:main
@@ -214,9 +215,8 @@ jobs:
       - name: Label the Pull Request
         id: label-the-pr
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          # BRANCH: ${{ github.event.pull_request.head.ref }}
           GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
-          echo '{"ref": "${{ env.BRANCH }}", "run-id": "${{ github.run_id }}", "pr": "${{ github.event.pull_request.number }}"}' | gh workflow run publish.yml --json
+        run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
+        # run: echo '{"ref": "${{ env.BRANCH }}", "run-id": "${{ github.run_id }}", "pr": "${{ github.event.pull_request.number }}"}' | gh workflow run publish.yml -r "${BRANCH}" --json
