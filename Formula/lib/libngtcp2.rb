@@ -8,12 +8,12 @@ class Libngtcp2 < Formula
 
   bottle do
     root_url "https://ghcr.io/v2/otsge/brews"
-    sha256 cellar: :any,                 arm64_tahoe:   "cc322d23bc007cf753ad6cac576f8d21c81aa11636bc47ce26468d00dd4812f9"
-    sha256 cellar: :any,                 arm64_sequoia: "325bfbfee524a337e3418479079e35399f5c403e54629c830e8d28aa95840c2e"
-    sha256 cellar: :any,                 tahoe:         "6986800cbe14b49bcef7eeaf1c3fc89b6baef53557c84b8532ca47eea0c1183e"
-    sha256 cellar: :any,                 sequoia:       "e8d684dcef85660e297dcb5fc1ae6d81a3e47ccbd1f33f1dab698ce3c9a53d68"
-    sha256 cellar: :any_skip_relocation, arm64_linux:   "781f37885c4487e0d5a8c2992df00722cf8d425dd37f4ba6c39cb3b4e60a3559"
-    sha256 cellar: :any_skip_relocation, x86_64_linux:  "be293242b0e04fb27c0f1f631c6796161ee081d14985dbf07d589fe21bfff438"
+    sha256 cellar: :any, arm64_tahoe:   "8d3030624b400ddaec7c392bc0b304accc3c8564342a7cb27fa7c661ab1bd986"
+    sha256 cellar: :any, arm64_sequoia: "cd1c2375e087f226358eef8fd7379d6275ef5653f52113b8c8dcb2bfcebbdc8a"
+    sha256 cellar: :any, tahoe:         "17b0819917579a9d875ec06e69dac4045f3088540c4065617e3bc4466f58a9d0"
+    sha256 cellar: :any, sequoia:       "7a408f5462ca5110c2b9680f9c89e81ec5b833a3f3333c0fd5934b422741467b"
+    sha256 cellar: :any, arm64_linux:   "ae80cb54f8339e1bc8f2d3d478ee5e992269c3a3d9bf2ab722d22c2f25998f59"
+    sha256 cellar: :any, x86_64_linux:  "77908b489b15620bb7e9266b9f0e058e3de6a78b2828ef9e376225571ae392f3"
   end
 
   head do
