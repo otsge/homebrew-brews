@@ -1,22 +1,15 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'Formula/**'
   pull_request:
     paths:
       - 'Formula/**'
-  # merge_group:
+  merge_group:
 
 env:
   BOTTLES_DIR: ${{ github.workspace }}/bottles
   HOMEBREW_DEVELOPER: 1
   HOMEBREW_GITHUB_ACTIONS: 1
-  HOMEBREW_SANDBOX_LINUX: 1
   HOMEBREW_NO_ANALYTICS: 1
   HOMEBREW_NO_AUTO_UPDATE: 1
   HOMEBREW_NO_INSTALL_FROM_API: 1
@@ -39,34 +32,43 @@ permissions:
   contents: read
 
 jobs:
-  # tap_syntax:
-  #   name: tap_syntax
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast-syntax') }}
-  #   container:
-  #     image: ghcr.io/homebrew/brew:main
-  #   env:
-  #     HOMEBREW_SIMULATE_MACOS_ON_LINUX: 1
-  #   steps:
-  #     - name: Set up Homebrew
-  #       id: set-up-homebrew
-  #       uses: Homebrew/actions/setup-homebrew@main
-  #       with:
-  #         core: false
-  #         cask: false
-  #         stable: false
+  changed_files:
+    outputs:
+      all-changed-files: ${{ steps.changed-files.outputs.all_changed_files }}
+      added-files: ${{ steps.changed-files.outputs.added_files }}
+      modified-files: ${{ steps.changed-files.outputs.modified_files }}
+      added-files-count: ${{ steps.changed-files.outputs.added_files_count }}
+      modified-files-count: ${{ steps.changed-files.outputs.modified_files_count }}
+      fuse-files: ${{ steps.file-deps.outputs.fuse }}
+    runs-on: ubuntu-latest
+    name: Test changed-files
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 0
 
-  #     - name: Cache style cache
-  #       uses: actions/cache@main
-  #       with:
-  #         path: /home/linuxbrew/.cache/Homebrew/style
-  #         key: style-cache-main-${{ github.sha }}
-  #         restore-keys: style-cache-main-
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@main
+        with:
+          files: Formula/**
 
-  #     - run: brew test-bot --only-tap-syntax
+      - name: List all changed files
+        id: file-deps
+        if: ${{ steps.changed-files.outputs.added_files_count > 0 || steps.changed-files.outputs.modified_files_count > 0 }}
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.added_files }} ${{ steps.changed-files.outputs.modified_files }}
+        run: |
+          echo "${ALL_CHANGED_FILES}"
+          for file in ${ALL_CHANGED_FILES}; do
+            grep -qls 'fuse' "$file" && echo "fuse=True" >> "${GITHUB_OUTPUT}"
+          done
   test-bot:
-    # needs: tap_syntax
-    if: github.event_name == 'pull_request'
+    needs: changed_files
+    if: ${{ github.event_name == 'pull_request' && (needs.changed_files.outputs.added-files-count > 0 || needs.changed_files.outputs.modified-files-count > 0) }}
     continue-on-error: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast-syntax') }}
     strategy:
       matrix:
@@ -135,10 +137,10 @@ jobs:
       - run: brew test-bot --only-tap-syntax
 
       - name: Install FUSE-T
-        if: ${{ contains(github.head_ref, 'rclone') && github.event_name == 'pull_request' && runner.os == 'macOS' }}
+        if: ${{ needs.changed_files.outputs.fuse-files == 'True' && runner.os == 'macOS' }}
         run: |
-          brew tap otsge/cask
-          brew install --cask otsge/cask/fuse-t
+          brew tap otsge/casks
+          brew install --cask otsge/casks/fuse-t
 
       - name: Base64-encode GITHUB_TOKEN for HOMEBREW_DOCKER_REGISTRY_TOKEN
         id: base64-encode
@@ -173,7 +175,7 @@ jobs:
         working-directory: ${{ env.BOTTLES_DIR }}
         env:
           HOMEBREW_DOCKER_REGISTRY_TOKEN: ${{ steps.base64-encode.outputs.token }}
-          IS_CURL: ${{ case(contains(github.head_ref, 'curl'), 'TRUE', 'FALSE') }}
+          IS_CURL: ${{ case(contains(needs.changed_files.outputs.all-changed-files, 'curl'), 'TRUE', 'FALSE') }}
         run:  |
           export HOMEBREW_NO_AUTO_UPDATE=1
           export HOMEBREW_NO_INSTALL_FROM_API=1
@@ -206,7 +208,6 @@ jobs:
           runner: ${{ matrix.os }}
           bottles-directory: ${{ env.BOTTLES_DIR }}
           logs-directory: ${{ env.BOTTLES_DIR }}/logs
-
   label-pr:
     needs: test-bot
     if: ${{ github.event_name == 'pull_request' }}
@@ -215,8 +216,6 @@ jobs:
       - name: Label the Pull Request
         id: label-the-pr
         env:
-          # BRANCH: ${{ github.event.pull_request.head.ref }}
           GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
-        # run: echo '{"ref": "${{ env.BRANCH }}", "run-id": "${{ github.run_id }}", "pr": "${{ github.event.pull_request.number }}"}' | gh workflow run publish.yml -r "${BRANCH}" --json
