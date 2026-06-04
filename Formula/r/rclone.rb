@@ -25,15 +25,26 @@ class Rclone < Formula
   def install
     ENV["GOPATH"] = prefix.to_s
     ENV["GOBIN"] = bin.to_s
-    ENV["GOMODCACHE"] = "#{HOMEBREW_CACHE}/go_mod_cache/pkg/mod"
+    ENV["GOMODCACHE"] = buildpath/".brew_home/go_mod_cache/pkg/mod"
 
-    if OS.mac? && Hardware::CPU.arm?
-      ENV.append "CGO_FLAGS", "-I/usr/local/include"
-      ENV.append "CGO_LDFLAGS", "-L/usr/local/lib"
+    if OS.mac?
+      fuse_prefix = Pathname("/usr/local/lib")
+      fuse_pc = fuse_prefix/"pkgconfig/fuse.pc"
+
+      unless fuse_pc.exist?
+        odie <<~EOS
+          FUSE was not found.
+
+          Install FUSE first with either:
+            fuse-t:  brew install --cask 'otsge/keg/fuse-t'
+            macfuse: brew install --cask 'macfuse'
+          Expected pkg-config file:
+            #{fuse_pc}
+        EOS
+      end
     end
 
-    args = ["GOTAGS=cmount"]
-    system "make", *args
+    system "make", "GOTAGS=cmount"
     man1.install "rclone.1"
     system bin/"rclone", "genautocomplete", "bash", "rclone.bash"
     system bin/"rclone", "genautocomplete", "zsh", "_rclone"
