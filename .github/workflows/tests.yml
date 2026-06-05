@@ -58,6 +58,7 @@ jobs:
 
       - name: List all changed files
         id: file-deps
+        continue-on-error: true
         if: ${{ steps.changed-files.outputs.added_files_count > 0 || steps.changed-files.outputs.modified_files_count > 0 }}
         env:
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.added_files }} ${{ steps.changed-files.outputs.modified_files }}
