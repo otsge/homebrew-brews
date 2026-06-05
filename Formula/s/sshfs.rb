@@ -9,6 +9,15 @@ class Sshfs < Formula
   license "GPL-2.0-or-later"
   head "https://github.com/macos-fuse-t/sshfs.git", branch: "libfuse3"
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 cellar: :any, arm64_tahoe:   "c12aa69cb0200e87497bc5ac96a80f79fca3b112fedc7ccca4ebb11c25ab0aa7"
+    sha256 cellar: :any, arm64_sequoia: "d268adafaa074849c65e1575a5639c5d6234a2247e8d32d460c0c168b0379614"
+    sha256 cellar: :any, arm64_sonoma:  "bc46692506f86d7cfbec242cc7357bfd7d2dd7f7f06b711cc864a469f838bf9c"
+    sha256 cellar: :any, tahoe:         "e81769062df8fd91aa597ebc70379e2ba179bcc3bfb15587aeeca283610e7ae8"
+    sha256 cellar: :any, sequoia:       "8f2a17356d4432903e2d564d77ee75936483a89861adcf0cbd0ae5cc484bd00b"
+  end
+
   depends_on "meson" => :build
   depends_on "ninja" => :build
   depends_on "pkgconf" => :build
