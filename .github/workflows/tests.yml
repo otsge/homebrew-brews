@@ -15,8 +15,7 @@ env:
   HOMEBREW_NO_INSTALL_FROM_API: 1
   HOMEBREW_ENFORCE_SBOM: 1
   HOMEBREW_NO_BUILD_ERROR_ISSUES: 1
-  HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
-  GH_REPO: ${{github.repository}}
+  GH_REPO: ${{ github.repository }}
   GH_NO_UPDATE_NOTIFIER: 1
   GH_PROMPT_DISABLED: 1
 
@@ -40,6 +39,7 @@ jobs:
       added-files-count: ${{ steps.changed-files.outputs.added_files_count }}
       modified-files-count: ${{ steps.changed-files.outputs.modified_files_count }}
       fuse-files: ${{ steps.file-deps.outputs.fuse }}
+      xcode26-files: ${{ steps.file-deps.outputs.xcode26 }}
     runs-on: ubuntu-latest
     name: Test changed-files
     permissions:
@@ -65,7 +65,8 @@ jobs:
         run: |
           echo "${ALL_CHANGED_FILES}"
           for file in ${ALL_CHANGED_FILES}; do
-            grep -qls 'fuse' "$file" && echo "fuse=True" >> "${GITHUB_OUTPUT}"
+            grep -qls 'fuse' "$file" && echo "fuse=True" >> "${GITHUB_OUTPUT}" || true
+            grep -qls 'xcode: \["26.0"' "$file" && echo "xcode26=True" >> "${GITHUB_OUTPUT}" || true
           done
   test-bot:
     needs: changed_files
@@ -75,10 +76,10 @@ jobs:
       matrix:
         os: [ macos-14, macos-15, macos-15-intel, macos-26, macos-26-intel ]
         include:
-          - os: ubuntu-22.04
-            container: ghcr.io/homebrew/brew:main
-          - os: ubuntu-22.04-arm
-            container: ghcr.io/homebrew/brew:main
+          - os: ubuntu-24.04
+            container: ghcr.io/homebrew/ubuntu24.04:main
+          - os: ubuntu-24.04-arm
+            container: ghcr.io/homebrew/ubuntu24.04:main
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     permissions:
@@ -139,6 +140,8 @@ jobs:
 
       - name: Install FUSE-T
         if: ${{ needs.changed_files.outputs.fuse-files == 'True' && runner.os == 'macOS' }}
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           brew tap otsge/casks
           brew install --cask otsge/casks/fuse-t
@@ -176,10 +179,11 @@ jobs:
         working-directory: ${{ env.BOTTLES_DIR }}
         env:
           HOMEBREW_DOCKER_REGISTRY_TOKEN: ${{ steps.base64-encode.outputs.token }}
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
           IS_CURL: ${{ case(contains(needs.changed_files.outputs.all-changed-files, 'curl'), 'TRUE', 'FALSE') }}
+          MACOS_VERSION: ${{ steps.setup-cache.outputs.macos_version }}
+          XCODE_26: ${{ (needs.changed_files.outputs.xcode26-files && 'TRUE') || 'FALSE' }}
         run:  |
-          export HOMEBREW_NO_AUTO_UPDATE=1
-          export HOMEBREW_NO_INSTALL_FROM_API=1
           if [[ "${IS_CURL}" == "TRUE" && "${{ runner.os }}" == "macOS" ]]
           then
             LC_ALL=C LANG=C sed -i '' 's#depends_on "libssh2"#depends_on "otsge/brews/libssh2"#g' "$(brew --taps)"/homebrew/homebrew-core/Formula/*/*.rb
@@ -191,6 +195,12 @@ jobs:
           if [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]
           then
             cp /Users/runner/work/homebrew-brews/homebrew-brews/.github/workflows/files/tb_formulae "$(brew --prefix)/Homebrew/Library/Homebrew/test_bot/formulae.rb"
+          fi
+          if [[ "${{ runner.os }}" == "macOS" && "${MACOS_VERSION}" == "15" && "${{runner.arch }}" == "ARM64" && "${XCODE_26}" == "TRUE" ]]
+          then
+            [[ "$(which xcodes)" ]] || brew install xcodesorg/made/xcodes
+            xcodes install 26.3
+            xcodes select 26.3
           fi
           pushd "$(brew --repository)"
           s="$(git status --porcelain)"
@@ -217,6 +227,6 @@ jobs:
       - name: Label the Pull Request
         id: label-the-pr
         env:
-          GH_TOKEN: ${{secrets.AUTOBUMP_TOKEN}}
+          GH_TOKEN: ${{ secrets.AUTOBUMP_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "otsge/homebrew-brews"
+        run: gh pr edit "${PR_NUMBER}" --add-label "pr-pull" --repo "${GITHUB_REPOSITORY}"
