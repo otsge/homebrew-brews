@@ -6,6 +6,12 @@ class Container < Formula
   license "Apache-2.0"
   head "https://github.com/apple/container.git", branch: "main"
 
+  bottle do
+    root_url "https://ghcr.io/v2/otsge/brews"
+    sha256 arm64_tahoe:   "75ae9c7526315b3139482709441075c983e6f4fea87afa2df9d51a279f6733e9"
+    sha256 arm64_sequoia: "191a6d657c389686d95ab2b609e19828ca69652b72f7bcc32bce1205e932be83"
+  end
+
   depends_on xcode: ["26.0", :build]
   depends_on arch: :arm64
   depends_on :macos
