@@ -12,12 +12,13 @@ class OpensslAT4 < Formula
 
   bottle do
     root_url "https://ghcr.io/v2/otsge/brews"
-    sha256 arm64_tahoe:   "1c0cb164af95fb6c33b37791a107d1082576ed2e4110eb68783858e82c9ebb7b"
-    sha256 arm64_sequoia: "f5c5f18749c0dbac4ea5a0918bfd8e9134f838854c6214a99b70d66c143c4fda"
-    sha256 tahoe:         "b1378cb4858ff5dfae1bfa365c49ea2706621f8e0071b4e85e9c9e571ff07104"
-    sha256 sequoia:       "c6a85973e79745a6a2ba25b622120e322188cd52fef9a79bf5a555814b290b73"
-    sha256 arm64_linux:   "881e93b63ef1c12585ce2d150a47c6ddfc28ef1db72524aac17570b74526c1c2"
-    sha256 x86_64_linux:  "b07bdc023e7e7061317d784eb386dd4595d8210bf4da74dce0bc7acdcbf0dc32"
+    sha256 arm64_tahoe:   "7bf978c25f6e3cdf0a5a7628e686c50d7f233beb324ee6259ae4192964244ca8"
+    sha256 arm64_sequoia: "68d870a07c8be06bfbcdb8e68c01a4877a69072270a47223e55616f5f35e11fd"
+    sha256 arm64_sonoma:  "ebebb6ec791b5ee73108130a2a2e2c3f9fc835bceb06a928e7ee8007e0110271"
+    sha256 tahoe:         "438c367ccc7e32bb112c6fa040e50a274a1823e88908c2a5aa04b7c1e8603408"
+    sha256 sequoia:       "9165daf4fda01ec4a8d0c06562fcd6cbb64e722eff3cd87f43d405fb0737ca31"
+    sha256 arm64_linux:   "23a5b552631162c210e16591fcdd956b8a754af15a2474b53be300c02e8c3c41"
+    sha256 x86_64_linux:  "62de5ecaa69e4a76fdbefc12976bfcf509a5bb8873da25ae0ed2a8d8618357fe"
   end
 
   keg_only :versioned_formula
